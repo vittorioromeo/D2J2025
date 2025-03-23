@@ -147,7 +147,7 @@ impl State {
         }
     }
 
-    fn get_current_rail_points<'a>(&mut self, world: &'a World) -> &'a [Vec2] {
+    fn get_current_rail_points<'a>(&self, world: &'a World) -> &'a [Vec2] {
         self.get_current_rail(world).points()
     }
 
@@ -356,8 +356,8 @@ async fn main() {
         false,
     )));
 
-    preset::preset_1(&mut world, 0.0);
-    preset::preset_2(&mut world, PI);
+    preset::preset_random(&mut world, 0.0);
+    preset::preset_random(&mut world, PI);
 
     world.rails.push(Block::Fork(Fork {
         which: ForkSelection::Rail2,

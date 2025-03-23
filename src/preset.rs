@@ -1,5 +1,7 @@
 use std::f32::consts::PI;
 
+use rand::seq::{IndexedRandom, SliceRandom};
+
 use crate::{Angle, Block, Rail, World, get_last_rail_world_position};
 
 pub fn preset_1(world: &mut World, start_angle: Angle) -> Angle {
@@ -45,4 +47,24 @@ pub fn preset_2(world: &mut World, start_angle: Angle) -> Angle {
     )));
 
     world.rails.last().unwrap().last_angle()
+}
+
+pub fn preset_random(world: &mut World, start_angle: Angle) -> Angle {
+    let random_number = random_number();
+    let is_even = random_number % 2 == 0;
+
+    // We could generalize this but it's not easy
+    if is_even {
+        preset_1(world, start_angle)
+    } else {
+        preset_2(world, start_angle)
+    }
+}
+
+fn random_number() -> i32 {
+    // using rand because macroquad's rand always return the same numbers
+    let mut rng = rand::rng();
+    let nums: Vec<i32> = (1..=2).collect();
+
+    *nums.choose(&mut rng).unwrap()
 }
