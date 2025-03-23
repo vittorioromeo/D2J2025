@@ -23,8 +23,27 @@ enum Block {
     Fork(Fork),
 }
 
+impl Block {
+    fn last_angle(&self) -> Angle {
+        match self {
+            Block::Rail(rail) => rail.last_angle(),
+            Block::Fork(fork) => fork.last_angle(),
+        }
+    }
+}
+
 pub struct World {
     rails: Vec<Block>,
+}
+
+impl Fork {
+    fn last_angle(&self) -> Angle {
+        if !self.rail1.is_wall {
+            self.rail1.last_angle()
+        } else {
+            self.rail2.last_angle()
+        }
+    }
 }
 
 impl World {
@@ -286,6 +305,18 @@ impl Rail {
         is_wall: bool,
     ) -> Self {
         Self::new_curved(position, dist, n_points, start_angle, 0.0, is_wall)
+    }
+
+    fn last_angle(&self) -> Angle {
+        let p1 = self.points.get(self.points.len() - 2).unwrap();
+        let p2 = self.points.last().unwrap();
+
+        // Calculate direction vector between points
+        let dx = p2.x - p1.x;
+        let dy = p2.y - p1.y;
+
+        // Calculate angle using arctangent (atan2 handles all quadrants correctly)
+        dy.atan2(dx)
     }
 }
 

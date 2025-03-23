@@ -11,17 +11,19 @@ pub fn preset_1(world: &mut World, start_angle: Angle) -> Angle {
         false,
     )));
 
-    let last_angle = PI / 8.0;
     world.rails.push(Block::Rail(Rail::new_curved(
         get_last_rail_world_position(world),
         30.0,
         8,
-        last_angle,
+        PI / 8.0,
         PI / 8.0,
         false,
     )));
 
-    last_angle
+    // TODO: take last two points, calculate angle between them and return it. also return the last point so we don't need to use get_last_rail_world_position
+
+    // Calculate angle between last two points
+    world.rails.last().unwrap().last_angle()
 }
 
 pub fn preset_2(world: &mut World, start_angle: Angle) -> Angle {
@@ -33,14 +35,14 @@ pub fn preset_2(world: &mut World, start_angle: Angle) -> Angle {
         false,
     )));
 
-    let last_angle = PI / 2.0;
     world.rails.push(Block::Rail(Rail::new_curved(
         get_last_rail_world_position(world),
         30.0,
         8,
-        last_angle,
+        PI / 2.0,
         PI / 8.0,
         false,
     )));
-    last_angle
+
+    world.rails.last().unwrap().last_angle()
 }
