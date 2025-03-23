@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use macroquad::prelude::{scene::set_camera, *};
+use macroquad::prelude::*;
 
 struct Rail {
     position: Vec2,
@@ -229,7 +229,7 @@ impl Rail {
         }
 
         Self {
-            position: position,
+            position,
             points: circle_points,
         }
     }
