@@ -229,7 +229,7 @@ impl State {
 
         let current_len = self.get_current_rail_points(world).len();
         let current_rail = &world.rails[self.current_rail_idx];
-        if current_rail.is_wall() && self.current_point_idx >= current_len -1 {
+        if current_rail.is_wall() && self.current_point_idx >= current_len - 1 {
             self.alive = false;
             self.current_point_idx = current_len - 2;
             return;
@@ -314,14 +314,19 @@ fn get_last_rail_world_position(world: &World) -> Vec2 {
     }
 }
 
-fn draw_rail(position: Vec2, points: &Vec<Vec2>, rail_color: Color) {
-    let mut color = WHITE;
-
-    for point in points {
+fn draw_rail(position: Vec2, points: &[Vec2], rail_color: Color, is_wall: bool) {
+    for (i, point) in points.iter().enumerate() {
         let point_world_position = position + *point;
 
+        let color = if i == 0 {
+            WHITE // First point is white
+        } else if i == points.len() - 1 && is_wall {
+            RED // Last point is red
+        } else {
+            BLUE // Middle points are blue
+        };
+
         draw_circle(point_world_position.x, point_world_position.y, 5.0, color);
-        color = BLUE;
     }
 
     for point_pair in points.windows(2) {
@@ -425,19 +430,29 @@ async fn main() {
     let mut camera_pos = vec2(0.0, 0.0);
 
     loop {
-        clear_background(RED);
+        clear_background(WHITE);
 
-        for rail in &world.rails {
-            match rail {
+        for block in &world.rails {
+            match block {
                 Block::Rail(rail) => {
-                    draw_rail(rail.position, &rail.points, BLUE);
+                    draw_rail(rail.position, &rail.points, BLUE, block.is_wall());
                 }
                 Block::Fork(fork) => {
                     let color1 = if fork.which { BLUE } else { GRAY };
                     let color2 = if fork.which { GRAY } else { BLUE };
 
-                    draw_rail(fork.rail1.position, &fork.rail1.points, color1);
-                    draw_rail(fork.rail2.position, &fork.rail2.points, color2);
+                    draw_rail(
+                        fork.rail1.position,
+                        &fork.rail1.points,
+                        color1,
+                        fork.rail1.is_wall,
+                    );
+                    draw_rail(
+                        fork.rail2.position,
+                        &fork.rail2.points,
+                        color2,
+                        fork.rail2.is_wall,
+                    );
                 }
             }
         }
