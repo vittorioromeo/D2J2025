@@ -39,6 +39,7 @@ enum Block {
 }
 
 impl Block {
+    // Calculate angle between last two points of the block
     fn last_angle(&self) -> Angle {
         match self {
             Block::Rail(rail) => rail.last_angle(),
