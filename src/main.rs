@@ -4,6 +4,8 @@ use std::f32::consts::PI;
 
 use macroquad::prelude::*;
 
+type Angle = f32;
+
 struct Rail {
     position: Vec2,
     points: Vec<Vec2>,
@@ -366,23 +368,7 @@ async fn main() {
     )));
 
     preset::preset_1(&mut world, 0.0);
-
-    world.rails.push(Block::Rail(Rail::new_straight(
-        get_last_rail_world_position(&world),
-        30.0,
-        8,
-        PI,
-        false,
-    )));
-
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(&world),
-        30.0,
-        8,
-        PI / 2.0,
-        PI / 8.0,
-        false,
-    )));
+    preset::preset_2(&mut world, PI);
 
     world.rails.push(Block::Fork(Fork {
         which: false,
