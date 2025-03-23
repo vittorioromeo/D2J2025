@@ -5,6 +5,7 @@ use macroquad::prelude::*;
 struct Rail {
     position: Vec2,
     points: Vec<Vec2>,
+    is_wall: bool,
 }
 
 struct Fork {
@@ -13,9 +14,28 @@ struct Fork {
     which: bool,
 }
 
+impl Fork {
+    fn is_wall(&self) -> bool {
+        if self.which {
+            self.rail1.is_wall
+        } else {
+            self.rail2.is_wall
+        }
+    }
+}
+
 enum Block {
     Rail(Rail),
     Fork(Fork),
+}
+
+impl Block {
+    fn is_wall(&self) -> bool {
+        match self {
+            Block::Rail(rail) => rail.is_wall,
+            Block::Fork(fork) => fork.is_wall(),
+        }
+    }
 }
 
 struct World {
@@ -43,6 +63,7 @@ struct State {
     current_rail_idx: usize,
     current_point_idx: usize,
     ms_timer: f32,
+    alive: bool,
 }
 
 impl State {
@@ -51,6 +72,7 @@ impl State {
             current_rail_idx: 0,
             current_point_idx: 0,
             ms_timer: 0.0,
+            alive: true,
         }
     }
 
@@ -77,7 +99,7 @@ impl State {
         }
     }
 
-    fn get_current_rail_points<'a>(&self, world: &'a World) -> &'a Vec<Vec2> {
+    fn get_current_rail_points<'a>(&mut self, world: &'a World) -> &'a Vec<Vec2> {
         let current_rail = self.get_current_rail(world);
 
         match current_rail {
@@ -205,7 +227,15 @@ impl State {
     fn move_to_next_point(&mut self, world: &World) {
         self.current_point_idx += 1;
 
-        if self.current_point_idx >= self.get_current_rail_points(world).len() {
+        let current_len = self.get_current_rail_points(world).len();
+        let current_rail = &world.rails[self.current_rail_idx];
+        if current_rail.is_wall() && self.current_point_idx >= current_len -1 {
+            self.alive = false;
+            self.current_point_idx = current_len - 2;
+            return;
+        }
+
+        if self.current_point_idx >= current_len {
             self.current_point_idx = 0;
             self.current_rail_idx += 1;
 
@@ -233,6 +263,7 @@ impl Rail {
         n_points: usize,
         start_angle: f32,
         angle_step: f32,
+        is_wall: bool,
     ) -> Self {
         let mut circle_points = vec![];
 
@@ -248,11 +279,18 @@ impl Rail {
         Self {
             position,
             points: circle_points,
+            is_wall,
         }
     }
 
-    fn new_straight(position: Vec2, dist: f32, n_points: usize, start_angle: f32) -> Self {
-        Self::new_curved(position, dist, n_points, start_angle, 0.0)
+    fn new_straight(
+        position: Vec2,
+        dist: f32,
+        n_points: usize,
+        start_angle: f32,
+        is_wall: bool,
+    ) -> Self {
+        Self::new_curved(position, dist, n_points, start_angle, 0.0, is_wall)
     }
 }
 
@@ -326,6 +364,7 @@ async fn main() {
         30.0,
         8,
         0.0,
+        false,
     )));
 
     world.rails.push(Block::Rail(Rail::new_straight(
@@ -333,6 +372,7 @@ async fn main() {
         30.0,
         8,
         0.0,
+        false,
     )));
 
     world.rails.push(Block::Rail(Rail::new_curved(
@@ -341,6 +381,7 @@ async fn main() {
         8,
         0.0,
         PI / 8.0,
+        false,
     )));
 
     world.rails.push(Block::Rail(Rail::new_straight(
@@ -348,6 +389,7 @@ async fn main() {
         30.0,
         8,
         PI,
+        false,
     )));
 
     world.rails.push(Block::Rail(Rail::new_curved(
@@ -356,16 +398,24 @@ async fn main() {
         8,
         PI / 2.0,
         PI / 8.0,
+        false,
     )));
 
     world.rails.push(Block::Fork(Fork {
         which: false,
-        rail1: Rail::new_straight(get_last_rail_world_position(&world), 30.0, 8, PI + PI / 6.0),
+        rail1: Rail::new_straight(
+            get_last_rail_world_position(&world),
+            30.0,
+            8,
+            PI + PI / 6.0,
+            false,
+        ),
         rail2: Rail::new_straight(
             get_last_rail_world_position(&world),
             30.0,
             8,
             PI + -PI / 6.0,
+            true,
         ),
     }));
 
@@ -424,7 +474,9 @@ async fn main() {
             },
         );
 
-        state.ms_timer += get_frame_time() * 1000.0;
+        if state.alive {
+            state.ms_timer += get_frame_time() * 1000.0;
+        }
 
         if state.ms_timer >= ms_to_next_point {
             state.ms_timer = 0.0;
