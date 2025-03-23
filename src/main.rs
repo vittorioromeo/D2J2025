@@ -15,7 +15,22 @@ struct Rail {
 struct Fork {
     rail1: Rail,
     rail2: Rail,
-    which: bool,
+    which: ForkSelection,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ForkSelection {
+    Rail1,
+    Rail2,
+}
+
+impl ForkSelection {
+    fn toggle(&self) -> Self {
+        match self {
+            ForkSelection::Rail1 => ForkSelection::Rail2,
+            ForkSelection::Rail2 => ForkSelection::Rail1,
+        }
+    }
 }
 
 enum Block {
@@ -42,6 +57,20 @@ impl Fork {
             self.rail1.last_angle()
         } else {
             self.rail2.last_angle()
+        }
+    }
+
+    fn points(&self) -> &[Vec2] {
+        match self.which {
+            ForkSelection::Rail1 => &self.rail1.points,
+            ForkSelection::Rail2 => &self.rail2.points,
+        }
+    }
+
+    fn position(&self) -> Vec2 {
+        match self.which {
+            ForkSelection::Rail1 => self.rail1.position,
+            ForkSelection::Rail2 => self.rail2.position,
         }
     }
 }
@@ -93,28 +122,23 @@ impl State {
 
         match current_rail {
             Block::Rail(rail) => rail.position + rail.points[self.current_point_idx],
-            Block::Fork(fork) => {
-                if fork.which {
+            Block::Fork(fork) => match fork.which {
+                ForkSelection::Rail1 => {
                     fork.rail1.position + fork.rail1.points[self.current_point_idx]
-                } else {
+                }
+                ForkSelection::Rail2 => {
                     fork.rail2.position + fork.rail2.points[self.current_point_idx]
                 }
-            }
+            },
         }
     }
 
-    fn get_current_rail_points<'a>(&mut self, world: &'a World) -> &'a Vec<Vec2> {
+    fn get_current_rail_points<'a>(&mut self, world: &'a World) -> &'a [Vec2] {
         let current_rail = self.get_current_rail(world);
 
         match current_rail {
             Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => {
-                if fork.which {
-                    &fork.rail1.points
-                } else {
-                    &fork.rail2.points
-                }
-            }
+            Block::Fork(fork) => fork.points(),
         }
     }
 
@@ -124,46 +148,22 @@ impl State {
 
         let current_rail_points = match current_rail {
             Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => {
-                if fork.which {
-                    &fork.rail1.points
-                } else {
-                    &fork.rail2.points
-                }
-            }
+            Block::Fork(fork) => fork.points(),
         };
 
         let current_rail_position = match current_rail {
             Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => {
-                if fork.which {
-                    fork.rail1.position
-                } else {
-                    fork.rail2.position
-                }
-            }
+            Block::Fork(fork) => fork.position(),
         };
 
         let next_rail_points = match next_rail {
             Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => {
-                if fork.which {
-                    &fork.rail1.points
-                } else {
-                    &fork.rail2.points
-                }
-            }
+            Block::Fork(fork) => fork.points(),
         };
 
         let next_rail_position = match next_rail {
             Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => {
-                if fork.which {
-                    fork.rail1.position
-                } else {
-                    fork.rail2.position
-                }
-            }
+            Block::Fork(fork) => fork.position(),
         };
 
         if current_rail_points.len() > self.current_point_idx + 1 {
@@ -179,46 +179,22 @@ impl State {
 
         let current_rail_points = match current_rail {
             Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => {
-                if fork.which {
-                    &fork.rail1.points
-                } else {
-                    &fork.rail2.points
-                }
-            }
+            Block::Fork(fork) => fork.points(),
         };
 
         let current_rail_position = match current_rail {
             Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => {
-                if fork.which {
-                    fork.rail1.position
-                } else {
-                    fork.rail2.position
-                }
-            }
+            Block::Fork(fork) => fork.position(),
         };
 
         let next_rail_points = match next_rail {
             Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => {
-                if fork.which {
-                    &fork.rail1.points
-                } else {
-                    &fork.rail2.points
-                }
-            }
+            Block::Fork(fork) => fork.points(),
         };
 
         let next_rail_position = match next_rail {
             Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => {
-                if fork.which {
-                    fork.rail1.position
-                } else {
-                    fork.rail2.position
-                }
-            }
+            Block::Fork(fork) => fork.position(),
         };
 
         if current_rail_points.len() > self.current_point_idx + 2 {
@@ -235,13 +211,10 @@ impl State {
         let current_rail = &world.rails[self.current_rail_idx];
         let is_wall = match current_rail {
             Block::Rail(rail) => rail.is_wall,
-            Block::Fork(fork) => {
-                if fork.which {
-                    fork.rail1.is_wall
-                } else {
-                    fork.rail2.is_wall
-                }
-            }
+            Block::Fork(fork) => match fork.which {
+                ForkSelection::Rail1 => fork.rail1.is_wall,
+                ForkSelection::Rail2 => fork.rail2.is_wall,
+            },
         };
         if is_wall && self.current_point_idx >= current_len - 1 {
             self.alive = false;
@@ -402,7 +375,7 @@ async fn main() {
     preset::preset_2(&mut world, PI);
 
     world.rails.push(Block::Fork(Fork {
-        which: false,
+        which: ForkSelection::Rail2,
         rail1: Rail::new_straight(
             get_last_rail_world_position(&world),
             30.0,
@@ -442,8 +415,16 @@ async fn main() {
                     draw_rail(rail.position, &rail.points, BLUE, rail.is_wall);
                 }
                 Block::Fork(fork) => {
-                    let color1 = if fork.which { BLUE } else { GRAY };
-                    let color2 = if fork.which { GRAY } else { BLUE };
+                    let color1 = if fork.which == ForkSelection::Rail1 {
+                        BLUE
+                    } else {
+                        GRAY
+                    };
+                    let color2 = if fork.which == ForkSelection::Rail2 {
+                        BLUE
+                    } else {
+                        GRAY
+                    };
 
                     draw_rail(
                         fork.rail1.position,
@@ -514,7 +495,7 @@ async fn main() {
         if is_key_pressed(KeyCode::Space) {
             if let Some(fork_idx) = world.find_next_fork_index(state.current_rail_idx) {
                 if let Block::Fork(fork) = &mut world.rails[fork_idx] {
-                    fork.which = !fork.which;
+                    fork.which = fork.which.toggle();
                 }
             }
         }
