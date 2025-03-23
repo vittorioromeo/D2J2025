@@ -22,6 +22,23 @@ struct World {
     rails: Vec<Block>,
 }
 
+impl World {
+    fn find_next_fork_index(&self, starting_idx: usize) -> Option<usize> {
+        let mut idx = starting_idx;
+
+        // Check all rails starting from the current one
+        for _ in 0..self.rails.len() {
+            if let Block::Fork(_) = &self.rails[idx] {
+                return Some(idx);
+            }
+
+            idx = (idx + 1) % self.rails.len();
+        }
+
+        None
+    }
+}
+
 struct State {
     current_rail_idx: usize,
     current_point_idx: usize,
@@ -300,21 +317,6 @@ fn exponential_approach_vec2(current: Vec2, target: Vec2, speed: f32, dt: f32) -
     current.lerp(target, t)
 }
 
-fn find_next_fork_index(world: &World, starting_idx: usize) -> Option<usize> {
-    let mut idx = starting_idx;
-
-    // Check all rails starting from the current one
-    for _ in 0..world.rails.len() {
-        if let Block::Fork(_) = &world.rails[idx] {
-            return Some(idx);
-        }
-
-        idx = (idx + 1) % world.rails.len();
-    }
-
-    None
-}
-
 #[macroquad::main("MyGame")]
 async fn main() {
     let mut world = World { rails: Vec::new() };
@@ -439,7 +441,7 @@ async fn main() {
         });
 
         if is_key_pressed(KeyCode::Space) {
-            if let Some(fork_idx) = find_next_fork_index(&world, state.current_rail_idx) {
+            if let Some(fork_idx) = world.find_next_fork_index(state.current_rail_idx) {
                 if let Block::Fork(fork) = &mut world.rails[fork_idx] {
                     fork.which = !fork.which;
                 }
