@@ -1,14 +1,21 @@
 use std::f32::consts::PI;
 
-use macroquad::prelude::*;
+use macroquad::prelude::{scene::set_camera, *};
 
 struct Rail {
     position: Vec2,
     points: Vec<Vec2>,
 }
 
+struct Fork {
+    rail1: Rail,
+    rail2: Rail,
+    which: bool,
+}
+
 enum Block {
     Rail(Rail),
+    Fork(Fork),
 }
 
 struct World {
@@ -43,6 +50,13 @@ impl State {
 
         match current_rail {
             Block::Rail(rail) => rail.position + rail.points[self.current_point_idx],
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.position + fork.rail1.points[self.current_point_idx]
+                } else {
+                    fork.rail2.position + fork.rail2.points[self.current_point_idx]
+                }
+            }
         }
     }
 
@@ -51,6 +65,13 @@ impl State {
 
         match current_rail {
             Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => {
+                if fork.which {
+                    &fork.rail1.points
+                } else {
+                    &fork.rail2.points
+                }
+            }
         }
     }
 
@@ -60,18 +81,46 @@ impl State {
 
         let current_rail_points = match current_rail {
             Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => {
+                if fork.which {
+                    &fork.rail1.points
+                } else {
+                    &fork.rail2.points
+                }
+            }
         };
 
         let current_rail_position = match current_rail {
             Block::Rail(rail) => rail.position,
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.position
+                } else {
+                    fork.rail2.position
+                }
+            }
         };
 
         let next_rail_points = match next_rail {
             Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => {
+                if fork.which {
+                    &fork.rail1.points
+                } else {
+                    &fork.rail2.points
+                }
+            }
         };
 
         let next_rail_position = match next_rail {
             Block::Rail(rail) => rail.position,
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.position
+                } else {
+                    fork.rail2.position
+                }
+            }
         };
 
         if current_rail_points.len() > self.current_point_idx + 1 {
@@ -87,18 +136,46 @@ impl State {
 
         let current_rail_points = match current_rail {
             Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => {
+                if fork.which {
+                    &fork.rail1.points
+                } else {
+                    &fork.rail2.points
+                }
+            }
         };
 
         let current_rail_position = match current_rail {
             Block::Rail(rail) => rail.position,
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.position
+                } else {
+                    fork.rail2.position
+                }
+            }
         };
 
         let next_rail_points = match next_rail {
             Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => {
+                if fork.which {
+                    &fork.rail1.points
+                } else {
+                    &fork.rail2.points
+                }
+            }
         };
 
         let next_rail_position = match next_rail {
             Block::Rail(rail) => rail.position,
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.position
+                } else {
+                    fork.rail2.position
+                }
+            }
         };
 
         if current_rail_points.len() > self.current_point_idx + 2 {
@@ -170,7 +247,57 @@ fn get_last_rail_world_position(world: &World) -> Vec2 {
             let last_point = rail.points.last().unwrap();
             rail.position + *last_point
         }
+        Block::Fork(fork) => {
+            if fork.which {
+                let last_point = fork.rail1.points.last().unwrap();
+                fork.rail1.position + *last_point
+            } else {
+                let last_point = fork.rail2.points.last().unwrap();
+                fork.rail2.position + *last_point
+            }
+        }
     }
+}
+
+fn draw_rail(position: Vec2, points: &Vec<Vec2>, rail_color: Color) {
+    let mut color = WHITE;
+
+    for point in points {
+        let point_world_position = position + *point;
+
+        draw_circle(point_world_position.x, point_world_position.y, 5.0, color);
+        color = BLUE;
+    }
+
+    for point_pair in points.windows(2) {
+        let point_world_position_1 = position + point_pair[0];
+        let point_world_position_2 = position + point_pair[1];
+
+        draw_line(
+            point_world_position_1.x,
+            point_world_position_1.y,
+            point_world_position_2.x,
+            point_world_position_2.y,
+            5.0,
+            rail_color,
+        );
+    }
+}
+
+/// Moves `current` exponentially toward `target`.
+///
+/// - `speed` controls how fast the approach is (higher means faster).
+/// - `dt` is the time delta (typically from `get_frame_time()`).
+///
+/// The exponential smoothing factor is calculated as:
+/// t = 1.0 - exp(-speed * dt)
+///
+/// This value is then used in linear interpolation.
+fn exponential_approach_vec2(current: Vec2, target: Vec2, speed: f32, dt: f32) -> Vec2 {
+    // Calculate the interpolation factor
+    let t = 1.0 - (-speed * dt).exp();
+    // Lerp between current and target using the factor
+    current.lerp(target, t)
 }
 
 #[macroquad::main("MyGame")]
@@ -214,8 +341,21 @@ async fn main() {
         PI / 8.0,
     )));
 
+    world.rails.push(Block::Fork(Fork {
+        which: false,
+        rail1: Rail::new_straight(get_last_rail_world_position(&world), 30.0, 8, PI + PI / 6.0),
+        rail2: Rail::new_straight(
+            get_last_rail_world_position(&world),
+            30.0,
+            8,
+            PI + -PI / 6.0,
+        ),
+    }));
+
     let mut state = State::new();
     let ms_to_next_point = 100.0;
+
+    let mut camera_pos = vec2(0.0, 0.0);
 
     loop {
         clear_background(RED);
@@ -223,28 +363,14 @@ async fn main() {
         for rail in &world.rails {
             match rail {
                 Block::Rail(rail) => {
-                    let mut color = WHITE;
+                    draw_rail(rail.position, &rail.points, BLUE);
+                }
+                Block::Fork(fork) => {
+                    let color1 = if fork.which { BLUE } else { GRAY };
+                    let color2 = if fork.which { GRAY } else { BLUE };
 
-                    for point in &rail.points {
-                        let point_world_position = rail.position + *point;
-
-                        draw_circle(point_world_position.x, point_world_position.y, 5.0, color);
-                        color = BLUE;
-                    }
-
-                    for point_pair in rail.points.windows(2) {
-                        let point_world_position_1 = rail.position + point_pair[0];
-                        let point_world_position_2 = rail.position + point_pair[1];
-
-                        draw_line(
-                            point_world_position_1.x,
-                            point_world_position_1.y,
-                            point_world_position_2.x,
-                            point_world_position_2.y,
-                            5.0,
-                            BLUE,
-                        );
-                    }
+                    draw_rail(fork.rail1.position, &fork.rail1.points, color1);
+                    draw_rail(fork.rail2.position, &fork.rail2.points, color2);
                 }
             }
         }
@@ -287,6 +413,15 @@ async fn main() {
             state.ms_timer = 0.0;
             state.move_to_next_point(&world);
         }
+
+        camera_pos = exponential_approach_vec2(camera_pos, train_position, 10.0, get_frame_time());
+
+        macroquad::camera::set_camera(&Camera2D {
+            zoom: vec2(0.0025, 0.0025),
+            target: camera_pos,
+            render_target: None,
+            ..Default::default()
+        });
 
         next_frame().await
     }
