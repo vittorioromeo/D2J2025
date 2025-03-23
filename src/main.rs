@@ -357,35 +357,10 @@ async fn main() {
         false,
     )));
 
-    preset::preset_random(&mut world, 0.0);
-    preset::preset_random(&mut world, PI);
-
-    world.rails.push(Block::Fork(Fork {
-        which: ForkSelection::Rail2,
-        rail1: Rail::new_straight(
-            get_last_rail_world_position(&world),
-            30.0,
-            8,
-            PI + PI / 6.0,
-            false,
-        ),
-        rail2: Rail::new_straight(
-            get_last_rail_world_position(&world),
-            30.0,
-            8,
-            PI + -PI / 6.0,
-            true,
-        ),
-    }));
-
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(&world),
-        30.0,
-        8,
-        PI / 2.0,
-        PI / 8.0,
-        false,
-    )));
+    let mut last_angle = 0.0;
+    for _ in 0..10 {
+        last_angle = preset::preset_random(&mut world, last_angle);
+    }
 
     let mut state = State::new();
     let ms_to_next_point = 100.0;
