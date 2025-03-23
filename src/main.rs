@@ -1,3 +1,5 @@
+mod preset;
+
 use std::f32::consts::PI;
 
 use macroquad::prelude::*;
@@ -19,7 +21,7 @@ enum Block {
     Fork(Fork),
 }
 
-struct World {
+pub struct World {
     rails: Vec<Block>,
 }
 
@@ -285,7 +287,7 @@ impl Rail {
     }
 }
 
-fn get_last_rail_world_position(world: &World) -> Vec2 {
+pub fn get_last_rail_world_position(world: &World) -> Vec2 {
     let last_rail = world.rails.last().unwrap();
 
     match last_rail {
@@ -363,22 +365,7 @@ async fn main() {
         false,
     )));
 
-    world.rails.push(Block::Rail(Rail::new_straight(
-        get_last_rail_world_position(&world),
-        30.0,
-        8,
-        0.0,
-        false,
-    )));
-
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(&world),
-        30.0,
-        8,
-        0.0,
-        PI / 8.0,
-        false,
-    )));
+    preset::preset_1(&mut world, 0.0);
 
     world.rails.push(Block::Rail(Rail::new_straight(
         get_last_rail_world_position(&world),
