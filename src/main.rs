@@ -45,6 +45,20 @@ impl Block {
             Block::Fork(fork) => fork.last_angle(),
         }
     }
+
+    fn points(&self) -> &[Vec2] {
+        match self {
+            Block::Rail(rail) => &rail.points,
+            Block::Fork(fork) => fork.points(),
+        }
+    }
+
+    fn position(&self) -> Vec2 {
+        match self {
+            Block::Rail(rail) => rail.position,
+            Block::Fork(fork) => fork.position(),
+        }
+    }
 }
 
 pub struct World {
@@ -134,37 +148,20 @@ impl State {
     }
 
     fn get_current_rail_points<'a>(&mut self, world: &'a World) -> &'a [Vec2] {
-        let current_rail = self.get_current_rail(world);
-
-        match current_rail {
-            Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => fork.points(),
-        }
+        self.get_current_rail(world).points()
     }
 
     fn get_next_point_world_position(&self, world: &World) -> Vec2 {
         let current_rail = self.get_current_rail(world);
         let next_rail = self.get_next_rail(world);
 
-        let current_rail_points = match current_rail {
-            Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => fork.points(),
-        };
+        let current_rail_points = current_rail.points();
 
-        let current_rail_position = match current_rail {
-            Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => fork.position(),
-        };
+        let current_rail_position = current_rail.position();
 
-        let next_rail_points = match next_rail {
-            Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => fork.points(),
-        };
+        let next_rail_points = next_rail.points();
 
-        let next_rail_position = match next_rail {
-            Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => fork.position(),
-        };
+        let next_rail_position = next_rail.position();
 
         if current_rail_points.len() > self.current_point_idx + 1 {
             current_rail_points[self.current_point_idx + 1] + current_rail_position
@@ -177,25 +174,13 @@ impl State {
         let current_rail = self.get_current_rail(world);
         let next_rail = self.get_next_rail(world);
 
-        let current_rail_points = match current_rail {
-            Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => fork.points(),
-        };
+        let current_rail_points = current_rail.points();
 
-        let current_rail_position = match current_rail {
-            Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => fork.position(),
-        };
+        let current_rail_position = current_rail.position();
 
-        let next_rail_points = match next_rail {
-            Block::Rail(rail) => &rail.points,
-            Block::Fork(fork) => fork.points(),
-        };
+        let next_rail_points = next_rail.points();
 
-        let next_rail_position = match next_rail {
-            Block::Rail(rail) => rail.position,
-            Block::Fork(fork) => fork.position(),
-        };
+        let next_rail_position = next_rail.position();
 
         if current_rail_points.len() > self.current_point_idx + 2 {
             current_rail_points[self.current_point_idx + 2] + current_rail_position
