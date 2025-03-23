@@ -14,28 +14,9 @@ struct Fork {
     which: bool,
 }
 
-impl Fork {
-    fn is_wall(&self) -> bool {
-        if self.which {
-            self.rail1.is_wall
-        } else {
-            self.rail2.is_wall
-        }
-    }
-}
-
 enum Block {
     Rail(Rail),
     Fork(Fork),
-}
-
-impl Block {
-    fn is_wall(&self) -> bool {
-        match self {
-            Block::Rail(rail) => rail.is_wall,
-            Block::Fork(fork) => fork.is_wall(),
-        }
-    }
 }
 
 struct World {
@@ -229,7 +210,17 @@ impl State {
 
         let current_len = self.get_current_rail_points(world).len();
         let current_rail = &world.rails[self.current_rail_idx];
-        if current_rail.is_wall() && self.current_point_idx >= current_len - 1 {
+        let is_wall = match current_rail {
+            Block::Rail(rail) => rail.is_wall,
+            Block::Fork(fork) => {
+                if fork.which {
+                    fork.rail1.is_wall
+                } else {
+                    fork.rail2.is_wall
+                }
+            }
+        };
+        if is_wall && self.current_point_idx >= current_len - 1 {
             self.alive = false;
             self.current_point_idx = current_len - 2;
             return;
@@ -303,7 +294,7 @@ fn get_last_rail_world_position(world: &World) -> Vec2 {
             rail.position + *last_point
         }
         Block::Fork(fork) => {
-            if fork.which {
+            if !fork.rail1.is_wall {
                 let last_point = fork.rail1.points.last().unwrap();
                 fork.rail1.position + *last_point
             } else {
@@ -424,6 +415,15 @@ async fn main() {
         ),
     }));
 
+    world.rails.push(Block::Rail(Rail::new_curved(
+        get_last_rail_world_position(&world),
+        30.0,
+        8,
+        PI / 2.0,
+        PI / 8.0,
+        false,
+    )));
+
     let mut state = State::new();
     let ms_to_next_point = 100.0;
 
@@ -435,7 +435,7 @@ async fn main() {
         for block in &world.rails {
             match block {
                 Block::Rail(rail) => {
-                    draw_rail(rail.position, &rail.points, BLUE, block.is_wall());
+                    draw_rail(rail.position, &rail.points, BLUE, rail.is_wall);
                 }
                 Block::Fork(fork) => {
                     let color1 = if fork.which { BLUE } else { GRAY };
