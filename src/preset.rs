@@ -1,93 +1,128 @@
 use std::f32::consts::PI;
 
+use macroquad::math::Vec2;
 use rand::seq::IndexedRandom;
 
-use crate::{Angle, Block, Fork, ForkSelection, Rail, World, get_last_rail_world_position};
+use crate::{
+    Angle, Block, Fork, ForkSelection, Letter, Rail, World, get_last_rail_world_position,
+    get_last_rail_world_start_angle,
+};
 
-pub fn preset_1(world: &mut World, start_angle: Angle) {
-    world.rails.push(Block::Rail(Rail::new_straight(
-        get_last_rail_world_position(world),
-        30.0,
-        8,
-        start_angle,
-        false,
-    )));
-
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(world),
-        30.0,
-        8,
-        PI / 8.0,
-        PI / 8.0,
-        false,
-    )));
-
-    // IMPROVEMENT: return the last point so we don't need to use get_last_rail_world_position
+pub fn get_flipped_mult(flipped: bool) -> f32 {
+    if flipped { 1.0 } else { -1.0 }
 }
 
-pub fn preset_2(world: &mut World, start_angle: Angle) {
-    world.rails.push(Block::Rail(Rail::new_straight(
-        get_last_rail_world_position(world),
-        30.0,
-        8,
-        start_angle,
-        false,
-    )));
+pub fn make_rail_straight(position: Vec2, start_angle: Angle) -> Rail {
+    Rail::new_straight(position, start_angle, false, 30.0, 8)
+}
 
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(world),
+pub fn make_rail_90_turn(position: Vec2, start_angle: Angle, is_wall: bool, flipped: bool) -> Rail {
+    Rail::new_curved(
+        position,
+        start_angle,
+        is_wall,
         30.0,
-        8,
-        PI / 2.0,
-        PI / 8.0,
-        false,
+        7,
+        get_flipped_mult(flipped) * PI / 16.0,
+    )
+}
+
+pub fn make_rail_u_turn(position: Vec2, start_angle: Angle, is_wall: bool, flipped: bool) -> Rail {
+    Rail::new_curved(
+        position,
+        start_angle,
+        is_wall,
+        30.0,
+        5,
+        get_flipped_mult(flipped) * PI / 8.0,
+    )
+}
+
+pub fn preset_0_straight(world: &mut World) {
+    world.rails.push(Block::Rail(make_rail_straight(
+        get_last_rail_world_position(world),
+        get_last_rail_world_start_angle(world),
     )));
 }
 
-fn preset_3(world: &mut World, start_angle: Angle) {
+pub fn preset_1_u_turn(world: &mut World) {
+    world.rails.push(Block::Rail(make_rail_u_turn(
+        get_last_rail_world_position(world),
+        get_last_rail_world_start_angle(world),
+        false,
+        random_number(2) == 1,
+    )));
+}
+
+pub fn preset_2_90_turn(world: &mut World) {
+    world.rails.push(Block::Rail(make_rail_90_turn(
+        get_last_rail_world_position(world),
+        get_last_rail_world_start_angle(world),
+        false,
+        random_number(2) == 1,
+    )));
+}
+
+pub fn random_letter() -> Letter {
+    match random_number(3) {
+        1 => Letter::A,
+        2 => Letter::B,
+        _ => Letter::C,
+    }
+}
+
+pub fn preset_3_fork_90_symmetrical_turn(world: &mut World) {
+    let position = get_last_rail_world_position(world);
+    let start_angle = get_last_rail_world_start_angle(world);
+
+    let random_bool = random_number(2) == 1;
+    let random_bool2 = random_number(2) == 1;
+
     world.rails.push(Block::Fork(Fork {
         which: ForkSelection::Rail2,
-        rail1: Rail::new_straight(
-            get_last_rail_world_position(world),
-            30.0,
-            8,
-            // this was `PI + PI / 6.0` before
-            start_angle,
-            false,
-        ),
-        rail2: Rail::new_straight(
-            get_last_rail_world_position(world),
-            30.0,
-            8,
-            PI + -PI / 6.0,
-            true,
-        ),
+        rail1: make_rail_90_turn(position, start_angle, random_bool, random_bool2),
+        rail2: make_rail_90_turn(position, start_angle, !random_bool, !random_bool2),
+        letter: random_letter(),
     }));
-
-    world.rails.push(Block::Rail(Rail::new_curved(
-        get_last_rail_world_position(world),
-        30.0,
-        8,
-        PI / 2.0,
-        PI / 8.0,
-        false,
-    )));
 }
 
-pub fn preset_random(world: &mut World, start_angle: Angle) -> Angle {
-    const MAX: i32 = 3;
-    let random_number = random_number(MAX);
-    println!("Random number: {}", random_number);
+pub fn preset_4_fork_u_turn_symmetrical_turn(world: &mut World) {
+    let position = get_last_rail_world_position(world);
+    let start_angle = get_last_rail_world_start_angle(world);
 
-    // We could generalize this but it's not easy
-    match random_number {
-        1 => preset_1(world, start_angle),
-        2 => preset_2(world, start_angle),
-        MAX => preset_3(world, start_angle),
-        _ => unreachable!(),
+    let random_bool = random_number(2) == 1;
+    let random_bool2 = random_number(2) == 1;
+
+    world.rails.push(Block::Fork(Fork {
+        which: ForkSelection::Rail2,
+        rail1: make_rail_u_turn(position, start_angle, random_bool, random_bool2),
+        rail2: make_rail_u_turn(position, start_angle, !random_bool, !random_bool2),
+        letter: random_letter(),
+    }));
+}
+
+pub fn preset_random(world: &mut World) {
+    if random_number(100) >= 50 {
+        preset_0_straight(world);
+    } else {
+        if random_number(100) >= 75 {
+            if random_number(100) >= 75 {
+                preset_2_90_turn(world);
+                preset_0_straight(world);
+            } else {
+                preset_1_u_turn(world);
+                preset_0_straight(world);
+            }
+        } else {
+            if random_number(100) >= 75 {
+                preset_3_fork_90_symmetrical_turn(world);
+                preset_0_straight(world);
+            } else {
+                preset_4_fork_u_turn_symmetrical_turn(world);
+                preset_0_straight(world);
+            }
+        }
     }
-
-    world.rails.last().unwrap().last_angle()
 }
 
 fn random_number(max: i32) -> i32 {
