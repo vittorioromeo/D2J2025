@@ -117,13 +117,6 @@ enum Block {
 }
 
 impl Block {
-    fn last_angle(&self) -> Angle {
-        match self {
-            Block::Rail(rail) => rail.last_angle(),
-            Block::Fork(fork) => fork.last_angle(),
-        }
-    }
-
     fn points(&self) -> &[Vec2] {
         match self {
             Block::Rail(rail) => &rail.points,
